@@ -1,0 +1,80 @@
+#!/bin/bash
+
+usage() {
+	cat <<EOF
+usage: git gone [-pldD] [<branch>=origin]
+OPTIONS
+	-p	prune remote branch
+	-n	dry run: list the gone branches
+	-d	delete the gone branches
+	-D	delete the gone branches forcefully
+EXAMPLES
+git gone -pn prune and dry run
+git gone -d delete the gone branches
+EOF
+}
+
+POSITIONAL=()
+OPTIONS=()
+
+while [[ $# -gt 0 ]]
+do
+	key="$1"
+	case $key in
+		-*)
+			OPTION="$1"
+			shift;;
+		*)
+			POSITIONAL+=("$1")
+			shift;;
+	esac
+done
+set -- "${POSITIONAL[@]}"
+
+if [ $# -eq 0 ];then
+	BRANCH="origin"
+elif [ $# -eq 1 ];then
+	BRANCH="$1"
+else
+	usage && echo "too many arguments!" && exit 1
+fi
+
+prune=0
+list=0
+delete=0
+force=0
+for (( i=1; i < ${#OPTION}; i++ ));do
+	op="${OPTION:$i:1}"
+	case $op in
+		p)
+			prune=1;;
+		n)
+			list=1;;
+		d)
+			delete=1;;
+		D)
+			delete=1
+			force=1;;
+		*)
+			usage && echo "unknown option $op!" && exit 1;;
+	esac
+	OPTIONS+=("$op")
+done
+
+if [ ${#OPTION} -eq 0 ];then
+	usage && exit 1
+fi
+if [ $prune -eq 1 ];then
+	git remote prune "$BRANCH"
+fi
+
+gone="$BRANCH/.*: gone]"
+if [ $delete -eq 1 ];then
+	if [ $force -eq 1 ];then
+		git branch -vv | grep "$gone" | awk '{print $1}' | xargs git branch -D
+	else
+		git branch -vv | grep "$gone" | awk '{print $1}' | xargs git branch -d
+	fi
+elif [ $list -eq 1 ];then
+	git branch -vv | grep "$gone"
+fi
