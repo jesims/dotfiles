@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -e
+git status
+git submodule foreach --recursive git status
